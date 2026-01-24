@@ -8,6 +8,8 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {LinkToken} from "../test/mocks/LinkToken.sol";
 
 contract HelperConfig is Script {
+    error HelperConfig_CantSetSubId();
+
     struct NetworkConfig {
         uint256 entranceFee;
         uint256 interval;
@@ -26,6 +28,13 @@ contract HelperConfig is Script {
         } else {
             activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
+    }
+
+    function setSubsciptionId(uint256 subId) external {
+        if (activeNetworkConfig.vrfCoordinator == address(0)) {
+            revert HelperConfig_CantSetSubId();
+        }
+        activeNetworkConfig.subscriptionId = subId;
     }
 
     function getSepoliaEthConfig() public pure returns (NetworkConfig memory) {

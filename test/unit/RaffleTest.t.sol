@@ -7,6 +7,7 @@ import {Raffle} from "../../src/Raffle.sol";
 import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract RaffleTest is Test {
     Raffle raffle;
@@ -128,5 +129,74 @@ contract RaffleTest is Test {
             )
         );
         raffle.performUpkeep("");
+    }
+
+    modifier raffleEnteredAndTimePassed() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
+
+    function testPerformUpkeepUpdatesRaffleStateAndEmitsRequestId()
+        public
+        raffleEnteredAndTimePassed
+    {
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        Raffle.RaffleState rState = raffle.getRaffleState();
+
+        assert(uint256(requestId) > 0);
+        assert(uint256(rState) == 1);
+    }
+
+    /////////////////////////////
+    // fulfillRandomWords      //
+    /////////////////////////////
+    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(
+        uint256 randomRequestId
+    ) public raffleEnteredAndTimePassed {
+        vm.expectRevert();
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(raffle)
+        );
+    }
+
+    function testFulfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEnteredAndTimePassed {
+        // Arrange
+        uint256 additionalEntrants = 5;
+        uint256 startingIndex = 1;
+        for (uint256 i = startingIndex; i < startingIndex + additionalEntrants; i++) {
+            address player = address(uint160(i));
+            hoax(player, STARTING_BALANCE);
+            raffle.enterRaffle{value: entranceFee}();
+        }
+        uint256 prize = entranceFee * (additionalEntrants + 1);
+
+        vm.recordLogs();
+
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        (uint96 balance, uint96 nativeBalance,,,) = VRFCoordinatorV2_5Mock(vrfCoordinator).getSubscription(subscriptionId);
+        console.log("LINK Balance:", balance);
+        console.log("Native Balance:", nativeBalance);        
+
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId),
+            address(raffle)
+        );
+
+        assert(uint256(raffle.getRaffleState()) == 0);
+        assert(raffle.getRecentWinner() != address(0));
+        assert(raffle.getPlayersLength() == 0);
+        assert(raffle.getLastTimestamp() == block.timestamp);
+        assert(raffle.getRecentWinner().balance == STARTING_BALANCE - entranceFee + prize);
     }
 }

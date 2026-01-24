@@ -132,8 +132,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 uint256(sRaffleState)
             );
         sRaffleState = RaffleState.CALCULATING;
-        bool enableNativePayment = true;
-        I_VRF_COORDINATOR.requestRandomWords(
+        bool enableNativePayment = false;
+        uint256 requestId = I_VRF_COORDINATOR.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: I_GAS_LANE,
                 subId: I_SUBSCRIPTION_ID,
@@ -147,6 +147,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 )
             })
         );
+        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(
@@ -184,5 +185,13 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     function getPlayersLength() external view returns (uint256) {
         return sPlayers.length;
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return sRecentWinner;
+    }
+
+    function getLastTimestamp() external view returns (uint256) {
+        return sLastTimestamp;
     }
 }
