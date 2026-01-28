@@ -56,7 +56,7 @@ contract RaffleTest is Test {
         raffle.enterRaffle{value: 0}();
     }
 
-    function testEnterRaffleSuccess() public {
+    function testRaffleRecordsPlayerWhenTheyEnter() public {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);

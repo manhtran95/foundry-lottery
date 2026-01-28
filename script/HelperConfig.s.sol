@@ -42,12 +42,12 @@ contract HelperConfig is Script {
 
     function getSepoliaEthConfig() public view returns (NetworkConfig memory) {
         return NetworkConfig({
-            entranceFee: 0.01 ether,
+            entranceFee: 0.001 ether,
             interval: 30,
             vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             subscriptionId: 5949010919811294092096842872130790330248909892896963621653894932597533858318,
-            callbackGasLimit: 500000,
+            callbackGasLimit: 100000,
             link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
